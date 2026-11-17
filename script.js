@@ -1,573 +1,662 @@
-/* ==============================
+/* =====================================
    CHESS TRAINING ASSISTANT
-   STYLE CSS
-================================ */
+   JAVASCRIPT
+===================================== */
 
-/* RESET */
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
+// DATA PENYIMPANAN
+const STORAGE = {
+    profile: "chess_profile",
+    matches: "chess_matches",
+    solved: "chess_solved",
+    score: "chess_score"
+};
 
-:root {
-    --primary: #315c45;
-    --primary-dark: #203e30;
-    --secondary: #d9e8dc;
-    --background: #f4f6f2;
-    --white: #ffffff;
-    --text: #26352c;
-    --muted: #718078;
-    --border: #e2e9e3;
-    --gold: #d6a84f;
-    --danger: #d9534f;
-}
-
-body {
-    font-family: Arial, sans-serif;
-    background: var(--background);
-    color: var(--text);
-    line-height: 1.6;
-}
-
-/* HEADER */
-.header {
-    background: linear-gradient(135deg, #203e30, #477657);
-    color: white;
-    padding: 30px 7%;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.header h1 {
-    font-size: 28px;
-    margin-bottom: 5px;
-}
-
-.header p {
-    color: #dce9df;
-    font-size: 14px;
-}
-
-.header-icon {
-    font-size: 65px;
-    color: #e7c779;
-}
-
-/* NAVIGATION */
-.navbar {
-    background: white;
-    display: flex;
-    justify-content: center;
-    gap: 10px;
-    padding: 12px;
-    box-shadow: 0 3px 12px rgba(0,0,0,0.05);
-    flex-wrap: wrap;
-    position: sticky;
-    top: 0;
-    z-index: 10;
-}
-
-.navbtn {
-    border: none;
-    background: transparent;
-    padding: 11px 18px;
-    border-radius: 8px;
-    color: var(--muted);
-    font-weight: bold;
-    cursor: pointer;
-    transition: 0.3s;
-}
-
-.navbtn:hover,
-.navbtn.active {
-    background: var(--primary);
-    color: white;
-}
-
-/* MAIN CONTAINER */
-.container {
-    width: 90%;
-    max-width: 1150px;
-    margin: 35px auto;
-    min-height: 60vh;
-}
-
-/* PAGE */
-.page {
-    display: none;
-    animation: fadeIn 0.3s ease;
-}
-
-.page.active {
-    display: block;
-}
-
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(8px);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateY(0);
+function readData(key, fallback) {
+    try {
+        const value = localStorage.getItem(key);
+        return value ? JSON.parse(value) : fallback;
+    } catch (error) {
+        return fallback;
     }
 }
 
-/* WELCOME CARD */
-.welcome-card {
-    background: linear-gradient(135deg, #315c45, #548b65);
-    color: white;
-    border-radius: 18px;
-    padding: 35px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 35px;
-    box-shadow: 0 8px 20px rgba(49,92,69,0.15);
+let profile = readData(STORAGE.profile, null);
+let matches = readData(STORAGE.matches, []);
+let solved = readData(STORAGE.solved, []);
+let score = Number(localStorage.getItem(STORAGE.score)) || 0;
+
+// DATA PUZZLE
+let puzzles = [];
+let puzzleIndex = 0;
+let currentPuzzle = null;
+let chessGame = null;
+let selectedSquare = null;
+let solutionIndex = 0;
+let puzzleCompleted = false;
+let boardLocked = true;
+
+// NAVIGASI
+function showPage(pageName) {
+    document.querySelectorAll(".page").forEach(page => {
+        page.classList.remove("active");
+    });
+
+    document.querySelectorAll(".navbtn").forEach(button => {
+        button.classList.remove("active");
+    });
+
+    const target = document.getElementById(pageName);
+    if (target) target.classList.add("active");
+
+    const nav = document.querySelector(
+        `.navbtn[data-page="${pageName}"]`
+    );
+    if (nav) nav.classList.add("active");
+
+    if (pageName === "home") updateDashboard();
+    if (pageName === "analysis") updateAnalysis();
 }
 
-.welcome-card h2 {
-    font-size: 28px;
-    margin-bottom: 10px;
-}
+document.querySelectorAll(".navbtn").forEach(button => {
+    button.addEventListener("click", () => {
+        showPage(button.dataset.page);
+    });
+});
 
-.welcome-card p {
-    color: #e3eee5;
-    max-width: 550px;
-}
+// PROFIL PEMAIN
+function saveProfile() {
+    const name = document.getElementById("playerName").value.trim();
+    const rating = document.getElementById("playerRating").value;
+    const goal = document.getElementById("playerGoal").value;
 
-.welcome-piece {
-    font-size: 90px;
-    color: #e8ca7c;
-}
-
-/* SECTION HEADING */
-.section-heading {
-    margin-bottom: 25px;
-}
-
-.section-heading h2 {
-    font-size: 25px;
-    color: var(--primary-dark);
-}
-
-.section-heading p {
-    color: var(--muted);
-    font-size: 14px;
-}
-
-/* STATISTICS */
-.stats-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 18px;
-    margin-bottom: 30px;
-}
-
-.stat-card {
-    background: white;
-    padding: 22px;
-    border-radius: 14px;
-    text-align: center;
-    border: 1px solid var(--border);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.03);
-    transition: 0.3s;
-}
-
-.stat-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 8px 18px rgba(0,0,0,0.07);
-}
-
-.stat-icon {
-    font-size: 27px;
-    margin-bottom: 8px;
-}
-
-.stat-card h3 {
-    font-size: 27px;
-    color: var(--primary);
-}
-
-.stat-card p {
-    color: var(--muted);
-    font-size: 13px;
-}
-
-/* CONTENT CARD */
-.content-card {
-    background: white;
-    padding: 25px;
-    border-radius: 14px;
-    margin-bottom: 25px;
-    border: 1px solid var(--border);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.03);
-}
-
-.content-card h2,
-.content-card h3 {
-    color: var(--primary-dark);
-    margin-bottom: 12px;
-}
-
-.content-card > p {
-    color: var(--muted);
-}
-
-/* QUICK ACCESS */
-.quick-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 14px;
-    margin-top: 20px;
-}
-
-.quick-grid button {
-    background: #edf4ee;
-    color: var(--primary-dark);
-    border: 1px solid #d9e8dc;
-    padding: 18px;
-    border-radius: 10px;
-    font-weight: bold;
-    cursor: pointer;
-    text-align: left;
-    transition: 0.3s;
-}
-
-.quick-grid button:hover {
-    background: var(--primary);
-    color: white;
-}
-
-/* FORM */
-label {
-    display: block;
-    margin-top: 17px;
-    margin-bottom: 7px;
-    font-size: 14px;
-    font-weight: bold;
-    color: var(--text);
-}
-
-input,
-select,
-textarea {
-    width: 100%;
-    padding: 12px;
-    border: 1px solid #dce5dd;
-    border-radius: 8px;
-    font-size: 14px;
-    font-family: inherit;
-    background: #fbfcfb;
-    color: var(--text);
-    outline: none;
-    transition: 0.2s;
-}
-
-input:focus,
-select:focus,
-textarea:focus {
-    border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(49,92,69,0.1);
-}
-
-textarea {
-    resize: vertical;
-}
-
-/* BUTTONS */
-.primary-btn,
-.secondary-btn,
-.hint-btn {
-    padding: 12px 18px;
-    border-radius: 8px;
-    border: none;
-    cursor: pointer;
-    font-weight: bold;
-    font-size: 14px;
-    transition: 0.3s;
-    margin-top: 15px;
-}
-
-.primary-btn {
-    background: var(--primary);
-    color: white;
-}
-
-.primary-btn:hover {
-    background: var(--primary-dark);
-    transform: translateY(-2px);
-}
-
-.secondary-btn {
-    background: #e8eee9;
-    color: var(--primary-dark);
-}
-
-.secondary-btn:hover {
-    background: #d6e3d9;
-}
-
-.hint-btn {
-    background: #fff3d8;
-    color: #89631f;
-}
-
-.hint-btn:hover {
-    background: #f5e2b7;
-}
-
-/* MESSAGE */
-.message {
-    margin-top: 12px;
-    color: var(--primary);
-    font-weight: bold;
-}
-
-.profile-summary {
-    padding: 15px;
-    background: #f3f7f3;
-    border-radius: 9px;
-    line-height: 2;
-}
-
-/* TABLE */
-.table-container {
-    width: 100%;
-    overflow-x: auto;
-}
-
-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 15px;
-    min-width: 600px;
-}
-
-th,
-td {
-    padding: 13px;
-    border-bottom: 1px solid var(--border);
-    text-align: left;
-    font-size: 13px;
-}
-
-th {
-    background: #edf4ee;
-    color: var(--primary-dark);
-}
-
-.empty-message {
-    color: var(--muted);
-    text-align: center;
-    padding: 20px;
-}
-
-/* PUZZLE */
-.puzzle-card {
-    text-align: center;
-}
-
-.puzzle-status {
-    background: #edf4ee;
-    color: var(--primary-dark);
-    padding: 12px;
-    border-radius: 8px;
-    margin-bottom: 20px;
-    font-weight: bold;
-}
-
-.board-container {
-    width: min(100%, 480px);
-    margin: 20px auto;
-}
-
-.chess-board {
-    width: 100%;
-    aspect-ratio: 1 / 1;
-    display: grid;
-    grid-template-columns: repeat(8, 1fr);
-    grid-template-rows: repeat(8, 1fr);
-    border: 5px solid #314b39;
-    border-radius: 4px;
-    overflow: hidden;
-}
-
-.square {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-size: clamp(23px, 6vw, 48px);
-    cursor: pointer;
-    position: relative;
-    user-select: none;
-}
-
-.square.light {
-    background: #eeeed2;
-}
-
-.square.dark {
-    background: #769656;
-}
-
-.square.selected {
-    background: #f6f669;
-}
-
-.square.target::after {
-    content: "";
-    width: 25%;
-    height: 25%;
-    background: rgba(30,30,30,0.3);
-    border-radius: 50%;
-    position: absolute;
-}
-
-.puzzle-turn {
-    font-weight: bold;
-    color: var(--primary);
-    margin: 12px 0;
-}
-
-.puzzle-controls {
-    display: flex;
-    justify-content: center;
-    gap: 10px;
-    flex-wrap: wrap;
-}
-
-.puzzle-hint {
-    color: #987128;
-    margin-top: 15px;
-}
-
-.puzzle-result {
-    font-weight: bold;
-    margin-top: 12px;
-}
-
-.instruction-box {
-    background: #f3f7f3;
-    text-align: left;
-    padding: 18px;
-    border-radius: 10px;
-    margin-top: 25px;
-}
-
-.instruction-box h4 {
-    color: var(--primary-dark);
-    margin-bottom: 8px;
-}
-
-.instruction-box p {
-    font-size: 13px;
-    color: var(--muted);
-    margin: 5px 0;
-}
-
-.puzzle-stats {
-    grid-template-columns: repeat(3, 1fr);
-}
-
-/* ANALYSIS */
-.analysis-advice {
-    background: #f3f7f3;
-    padding: 18px;
-    border-radius: 10px;
-    color: var(--text);
-    line-height: 1.8;
-}
-
-/* FOOTER */
-.footer {
-    background: #203e30;
-    color: white;
-    text-align: center;
-    padding: 30px 15px;
-    margin-top: 50px;
-}
-
-.footer h3 {
-    margin-bottom: 8px;
-}
-
-.footer p {
-    color: #cbdace;
-    font-size: 13px;
-}
-
-/* RESPONSIVE DESIGN */
-@media (max-width: 800px) {
-    .stats-grid {
-        grid-template-columns: repeat(2, 1fr);
+    if (!name) {
+        alert("Masukkan nama pemain terlebih dahulu.");
+        return;
     }
 
-    .navbar {
-        justify-content: flex-start;
-        overflow-x: auto;
-        flex-wrap: nowrap;
+    profile = {
+        name,
+        rating: rating || "Belum diisi",
+        goal
+    };
+
+    localStorage.setItem(STORAGE.profile, JSON.stringify(profile));
+
+    document.getElementById("profileMessage").textContent =
+        "Profil berhasil disimpan!";
+
+    renderProfile();
+    updateDashboard();
+}
+
+function renderProfile() {
+    const summary = document.getElementById("profileSummary");
+
+    if (!profile) {
+        summary.textContent = "Belum ada profil yang disimpan.";
+        return;
     }
 
-    .navbtn {
-        white-space: nowrap;
+    document.getElementById("playerName").value = profile.name;
+    document.getElementById("playerRating").value =
+        profile.rating === "Belum diisi" ? "" : profile.rating;
+    document.getElementById("playerGoal").value = profile.goal;
+
+    summary.innerHTML = `
+        <strong>Nama:</strong> ${escapeHTML(profile.name)}<br>
+        <strong>Rating:</strong> ${escapeHTML(String(profile.rating))}<br>
+        <strong>Target:</strong> ${escapeHTML(profile.goal)}
+    `;
+}
+
+// MATCH TRACKER
+function addMatch() {
+    const opponent = document.getElementById("opponent").value.trim();
+    const date = document.getElementById("matchDate").value;
+    const result = document.getElementById("matchResult").value;
+    const color = document.getElementById("matchColor").value;
+    const notes = document.getElementById("matchNotes").value.trim();
+
+    if (!opponent || !date) {
+        alert("Isi nama lawan dan tanggal pertandingan.");
+        return;
     }
 
-    .header h1 {
-        font-size: 22px;
+    matches.push({
+        id: Date.now(),
+        opponent,
+        date,
+        result,
+        color,
+        notes
+    });
+
+    localStorage.setItem(STORAGE.matches, JSON.stringify(matches));
+
+    document.getElementById("opponent").value = "";
+    document.getElementById("matchNotes").value = "";
+
+    renderMatches();
+    updateDashboard();
+    updateAnalysis();
+
+    alert("Pertandingan berhasil disimpan!");
+}
+
+function renderMatches() {
+    const rows = document.getElementById("matchRows");
+    const empty = document.getElementById("emptyMatches");
+
+    rows.innerHTML = "";
+
+    if (matches.length === 0) {
+        empty.style.display = "block";
+        return;
+    }
+
+    empty.style.display = "none";
+
+    [...matches].reverse().forEach(match => {
+        const tr = document.createElement("tr");
+
+        [
+            match.date,
+            match.opponent,
+            match.result,
+            match.color,
+            match.notes || "-"
+        ].forEach(value => {
+            const td = document.createElement("td");
+            td.textContent = value;
+            tr.appendChild(td);
+        });
+
+        const action = document.createElement("td");
+        const deleteButton = document.createElement("button");
+        deleteButton.textContent = "Hapus";
+        deleteButton.className = "secondary-btn";
+        deleteButton.onclick = () => deleteMatch(match.id);
+
+        action.appendChild(deleteButton);
+        tr.appendChild(action);
+        rows.appendChild(tr);
+    });
+}
+
+function deleteMatch(id) {
+    if (!confirm("Hapus pertandingan ini?")) return;
+
+    matches = matches.filter(match => match.id !== id);
+    localStorage.setItem(STORAGE.matches, JSON.stringify(matches));
+
+    renderMatches();
+    updateDashboard();
+    updateAnalysis();
+}
+
+// DASHBOARD
+function updateDashboard() {
+    const wins = matches.filter(m => m.result === "Menang").length;
+    const rate = matches.length
+        ? Math.round(wins / matches.length * 100)
+        : 0;
+
+    document.getElementById("homeGames").textContent = matches.length;
+    document.getElementById("homeWins").textContent = wins;
+    document.getElementById("homePuzzle").textContent = solved.length;
+    document.getElementById("homeRate").textContent = rate + "%";
+
+    const welcome = document.querySelector(".welcome-card h2");
+    if (welcome) {
+        welcome.textContent = profile
+            ? "Welcome, " + profile.name + "!"
+            : "Welcome, Chess Player!";
     }
 }
 
-@media (max-width: 500px) {
-    .container {
-        width: 94%;
-        margin: 22px auto;
+// ANALISIS
+function updateAnalysis() {
+    const wins = matches.filter(m => m.result === "Menang").length;
+    const draws = matches.filter(m => m.result === "Seri").length;
+    const losses = matches.filter(m => m.result === "Kalah").length;
+
+    const rate = matches.length
+        ? Math.round(wins / matches.length * 100)
+        : 0;
+
+    document.getElementById("analysisGames").textContent = matches.length;
+    document.getElementById("analysisWins").textContent = wins;
+    document.getElementById("analysisDraws").textContent = draws;
+    document.getElementById("analysisLosses").textContent = losses;
+    document.getElementById("analysisWinRate").textContent = rate + "%";
+    document.getElementById("analysisSolved").textContent = solved.length;
+
+    let advice = "Belum ada data pertandingan. Tambahkan pertandingan untuk melihat evaluasi.";
+
+    if (matches.length > 0) {
+        if (rate >= 60) {
+            advice = "Performa kemenanganmu cukup baik. Pertahankan latihan dan evaluasi setiap pertandingan.";
+        } else if (rate >= 40) {
+            advice = "Performa masih berkembang. Perhatikan kesalahan taktik dan rencanakan langkah lebih matang.";
+        } else {
+            advice = "Terus berlatih! Coba evaluasi setiap kekalahan untuk menemukan bagian yang perlu ditingkatkan.";
+        }
     }
 
-    .header {
-        padding: 22px 5%;
-    }
+    document.getElementById("analysisAdvice").textContent = advice;
+}
 
-    .header-icon {
-        font-size: 48px;
-    }
+// PUZZLE
+async function loadPuzzleSet() {
+    const level = document.getElementById("puzzleLevel").value;
+    const count = Number(document.getElementById("puzzleCount").value);
 
-    .welcome-card {
-        padding: 22px;
-    }
+    const ranges = {
+        beginner: [800, 1399],
+        intermediate: [1400, 1799],
+        advanced: [1800, 2199]
+    };
 
-    .welcome-card h2 {
-        font-size: 21px;
-    }
+    const [min, max] = ranges[level];
 
-    .welcome-piece {
-        font-size: 55px;
-    }
+    const status = document.getElementById("puzzleStatus");
+    status.textContent = "Sedang mengambil puzzle. Tunggu sebentar...";
 
-    .stats-grid {
-        gap: 10px;
-    }
+    document.getElementById("loadPuzzlesBtn").disabled = true;
 
-    .stat-card {
-        padding: 16px 8px;
-    }
+    try {
+        const url =
+            `https://chess.mauriulloa.com/v1/puzzles/random?ratingMin=${min}&ratingMax=${max}&count=${count}`;
 
-    .stat-card h3 {
-        font-size: 23px;
-    }
+        const response = await fetch(url);
 
-    .content-card {
-        padding: 18px;
-    }
+        if (!response.ok) {
+            throw new Error("Server puzzle tidak merespons.");
+        }
 
-    .quick-grid {
-        grid-template-columns: 1fr;
-    }
+        const data = await response.json();
 
-    .puzzle-controls button {
-        flex: 1 1 100%;
+        let list = Array.isArray(data)
+            ? data
+            : data.puzzles || data.items || data.results || data.data || [];
+
+        if (!Array.isArray(list) || list.length === 0) {
+            throw new Error("Puzzle tidak ditemukan.");
+        }
+
+        puzzles = list.filter(p => {
+            return (p.positionFen || p.fen) &&
+                (p.solution || p.moves);
+        });
+
+        if (puzzles.length === 0) {
+            throw new Error("Format puzzle dari server belum sesuai.");
+        }
+
+        puzzleIndex = 0;
+        displayPuzzle();
+
+    } catch (error) {
+        status.textContent =
+            "Puzzle online gagal dimuat. Periksa koneksi internet lalu coba lagi. (" +
+            error.message + ")";
+
+        document.getElementById("puzzleBoard").innerHTML = "";
+        document.getElementById("puzzleTurn").textContent = "";
+    } finally {
+        document.getElementById("loadPuzzlesBtn").disabled = false;
     }
 }
+
+function displayPuzzle() {
+    if (!puzzles.length || puzzleIndex >= puzzles.length) {
+        document.getElementById("puzzleStatus").textContent =
+            "Semua puzzle dalam sesi ini selesai!";
+        document.getElementById("puzzleBoard").innerHTML = "";
+        return;
+    }
+
+    currentPuzzle = puzzles[puzzleIndex];
+
+    const fen = currentPuzzle.positionFen || currentPuzzle.fen;
+    const rawSolution = currentPuzzle.solution || currentPuzzle.moves;
+
+    try {
+        chessGame = new Chess(fen);
+    } catch (error) {
+        document.getElementById("puzzleStatus").textContent =
+            "Posisi puzzle tidak valid.";
+        return;
+    }
+
+    if (typeof rawSolution === "string") {
+        currentPuzzleMoves = rawSolution.trim().split(/\s+/);
+    } else {
+        currentPuzzleMoves = rawSolution;
+    }
+
+    solutionIndex = 0;
+    selectedSquare = null;
+    puzzleCompleted = false;
+    boardLocked = false;
+
+    document.getElementById("puzzleNumber").textContent =
+        `${puzzleIndex + 1} / ${puzzles.length}`;
+
+    document.getElementById("puzzleRating").textContent =
+        currentPuzzle.rating || "-";
+
+    document.getElementById("puzzleScore").textContent = score;
+
+    document.getElementById("puzzleStatus").textContent =
+        "Temukan langkah terbaik!";
+
+    document.getElementById("puzzleResult").textContent = "";
+    document.getElementById("puzzleHint").textContent = "";
+
+    document.getElementById("puzzleTurn").textContent =
+        "Giliran: " + (chessGame.turn() === "w" ? "Putih" : "Hitam");
+
+    // Jika langkah pertama adalah langkah lawan,
+    // jalankan otomatis sebelum giliran pemain.
+    const solver = currentPuzzle.solverColor ||
+        currentPuzzle.color ||
+        chessGame.turn();
+
+    if (chessGame.turn() !== solver && currentPuzzleMoves.length) {
+        const firstMove = currentPuzzleMoves[solutionIndex++];
+        playUciMove(firstMove);
+    }
+
+    renderBoard();
+}
+
+let currentPuzzleMoves = [];
+
+function playUciMove(uci) {
+    if (!uci || !chessGame) return false;
+
+    const move = {
+        from: uci.substring(0, 2),
+        to: uci.substring(2, 4)
+    };
+
+    if (uci.length >= 5) {
+        move.promotion = uci[4];
+    }
+
+    const result = chessGame.move(move);
+    return Boolean(result);
+}
+
+function renderBoard() {
+    const board = document.getElementById("puzzleBoard");
+    if (!board || !chessGame) return;
+
+    board.innerHTML = "";
+
+    const boardArray = chessGame.board();
+    const symbols = {
+        w: { k: "♔", q: "♕", r: "♖", b: "♗", n: "♘", p: "♙" },
+        b: { k: "♚", q: "♛", r: "♜", b: "♝", n: "♞", p: "♟" }
+    };
+
+    const orientation = currentPuzzle &&
+        (currentPuzzle.solverColor || currentPuzzle.color) === "b"
+        ? "b" : "w";
+
+    for (let row = 0; row < 8; row++) {
+        for (let col = 0; col < 8; col++) {
+            const actualRow = orientation === "w" ? row : 7 - row;
+            const actualCol = orientation === "w" ? col : 7 - col;
+
+            const file = "abcdefgh"[actualCol];
+            const rank = 8 - actualRow;
+            const squareName = file + rank;
+
+            const piece = boardArray[actualRow][actualCol];
+            const square = document.createElement("button");
+
+            square.type = "button";
+            square.className =
+                "square " + ((actualRow + actualCol) % 2 === 0
+                    ? "light" : "dark");
+
+            if (selectedSquare === squareName) {
+                square.classList.add("selected");
+            }
+
+            square.dataset.square = squareName;
+            square.textContent = piece
+                ? symbols[piece.color][piece.type]
+                : "";
+
+            square.addEventListener("click", () => {
+                handleSquareClick(squareName);
+            });
+
+            board.appendChild(square);
+        }
+    }
+}
+
+function handleSquareClick(square) {
+    if (!chessGame || boardLocked || puzzleCompleted) return;
+
+    const piece = chessGame.get(square);
+
+    if (!selectedSquare) {
+        if (piece && piece.color === chessGame.turn()) {
+            selectedSquare = square;
+            renderBoard();
+        }
+        return;
+    }
+
+    if (piece && piece.color === chessGame.turn()) {
+        selectedSquare = square;
+        renderBoard();
+        return;
+    }
+
+    const attemptedMove = {
+        from: selectedSquare,
+        to: square,
+        promotion: "q"
+    };
+
+    const legalMove = chessGame.moves({
+        square: selectedSquare,
+        verbose: true
+    }).find(m => m.to === square);
+
+    if (!legalMove) {
+        selectedSquare = null;
+        renderBoard();
+        return;
+    }
+
+    const uci = legalMove.from + legalMove.to +
+        (legalMove.promotion || "");
+
+    const expected = currentPuzzleMoves[solutionIndex];
+
+    if (!expected) {
+        selectedSquare = null;
+        renderBoard();
+        return;
+    }
+
+    if (uci !== expected) {
+        document.getElementById("puzzleResult").textContent =
+            "Belum tepat. Coba pikirkan langkah lain!";
+        selectedSquare = null;
+        renderBoard();
+        return;
+    }
+
+    chessGame.move(attemptedMove);
+    solutionIndex++;
+    selectedSquare = null;
+
+    if (solutionIndex >= currentPuzzleMoves.length) {
+        finishPuzzle();
+        renderBoard();
+        return;
+    }
+
+    // Balasan lawan otomatis
+    const opponentMove = currentPuzzleMoves[solutionIndex];
+
+    if (!playUciMove(opponentMove)) {
+        document.getElementById("puzzleResult").textContent =
+            "Langkah balasan tidak dapat diproses.";
+        renderBoard();
+        return;
+    }
+
+    solutionIndex++;
+
+    if (solutionIndex >= currentPuzzleMoves.length) {
+        finishPuzzle();
+    } else {
+        document.getElementById("puzzleResult").textContent =
+            "Bagus! Lanjutkan mencari langkah berikutnya.";
+    }
+
+    document.getElementById("puzzleTurn").textContent =
+        "Giliran: " + (chessGame.turn() === "w" ? "Putih" : "Hitam");
+
+    renderBoard();
+}
+
+function finishPuzzle() {
+    if (puzzleCompleted) return;
+
+    puzzleCompleted = true;
+    boardLocked = true;
+    score += 10;
+
+    const puzzleId = currentPuzzle.id ||
+        currentPuzzle.puzzleId ||
+        "puzzle-" + puzzleIndex;
+
+    if (!solved.includes(puzzleId)) {
+        solved.push(puzzleId);
+    }
+
+    localStorage.setItem(STORAGE.solved, JSON.stringify(solved));
+    localStorage.setItem(STORAGE.score, String(score));
+
+    document.getElementById("puzzleScore").textContent = score;
+    document.getElementById("puzzleResult").textContent =
+        "Hebat! Puzzle berhasil diselesaikan. +10 poin.";
+    document.getElementById("puzzleStatus").textContent =
+        "Puzzle selesai!";
+
+    updateDashboard();
+    updateAnalysis();
+}
+
+function showPuzzleHint() {
+    if (!currentPuzzle || !currentPuzzleMoves.length) {
+        document.getElementById("puzzleHint").textContent =
+            "Mulai latihan terlebih dahulu.";
+        return;
+    }
+
+    const move = currentPuzzleMoves[solutionIndex];
+
+    if (!move) {
+        document.getElementById("puzzleHint").textContent =
+            "Puzzle ini sudah selesai.";
+        return;
+    }
+
+    document.getElementById("puzzleHint").textContent =
+        "Petunjuk: perhatikan langkah dari kotak " +
+        move.substring(0, 2) + ".";
+}
+
+function restartCurrentPuzzle() {
+    if (!currentPuzzle) {
+        document.getElementById("puzzleStatus").textContent =
+            "Mulai latihan terlebih dahulu.";
+        return;
+    }
+
+    displayPuzzle();
+}
+
+function nextPuzzle() {
+    if (!puzzles.length) {
+        document.getElementById("puzzleStatus").textContent =
+            "Klik Mulai Latihan terlebih dahulu.";
+        return;
+    }
+
+    puzzleIndex++;
+
+    if (puzzleIndex >= puzzles.length) {
+        document.getElementById("puzzleStatus").textContent =
+            "Sesi selesai! Klik Mulai Latihan untuk mengambil puzzle baru.";
+        document.getElementById("puzzleBoard").innerHTML = "";
+        return;
+    }
+
+    displayPuzzle();
+}
+
+// EKSPOR DATA
+function exportData() {
+    const data = {
+        profile,
+        matches,
+        solvedPuzzles: solved,
+        puzzleScore: score,
+        exportedAt: new Date().toISOString()
+    };
+
+    const blob = new Blob(
+        [JSON.stringify(data, null, 2)],
+        { type: "application/json" }
+    );
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+
+    link.href = url;
+    link.download = "chess-training-data.json";
+    link.click();
+
+    URL.revokeObjectURL(url);
+}
+
+// KEAMANAN TEKS
+function escapeHTML(value) {
+    return String(value).replace(/[&<>"']/g, char => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#039;"
+    })[char]);
+}
+
+// INISIALISASI
+function initializeApp() {
+    const dateInput = document.getElementById("matchDate");
+
+    if (dateInput) {
+        dateInput.value = new Date().toISOString().slice(0, 10);
+    }
+
+    renderProfile();
+    renderMatches();
+    updateDashboard();
+    updateAnalysis();
+
+    console.log("Chess Training Assistant berhasil dimuat.");
+}
+
+initializeApp();
